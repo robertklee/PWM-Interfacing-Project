@@ -59,10 +59,11 @@ main(int argc, char* argv[]){
 	myTIM2_Init();		/* Initialize timer TIM2 */
 	myEXTI_Init();		/* Initialize EXTI */
 
+
+
 	while (1)
 	{
-		TIM2->CR1 |= TIM_CR1_CEN;
-		trace_printf("counter: %d\n", TIM2->CNT);
+		//trace_printf("counter: %d\n", TIM2->CNT);
 	}
 
 	return 0;
@@ -110,7 +111,7 @@ void myTIM2_Init()
 
 	/* Assign TIM2 interrupt priority = 0 in NVIC */
 	// Relevant register: NVIC->IP[3], or use NVIC_SetPriority
-	NVIC_SetPriority(TIM2_IRQn, 0); //TODO could be better as 64?
+	NVIC_SetPriority(TIM2_IRQn, 64); //TODO could be better as 64?
 
 	/* Enable TIM2 interrupts in NVIC */
 	// Relevant register: NVIC->ISER[0], or use NVIC_EnableIRQ
@@ -170,8 +171,8 @@ void TIM2_IRQHandler()
 void EXTI0_1_IRQHandler()
 {
 	// Your local variables...
-	volatile float frequency = 0;
-	volatile float counterValue = 0;
+	volatile unsigned int frequency = 0;
+	volatile unsigned int counterValue = 0;
 	/* Check if EXTI1 interrupt pending flag is indeed set */
 	if ((EXTI->PR & EXTI_PR_PR1) != 0)
 	{
@@ -192,21 +193,26 @@ void EXTI0_1_IRQHandler()
 		// 2. Clear EXTI1 interrupt pending flag (EXTI->PR).
 		//
 
-		if (previousEdgeFound && !stopPrinting) {
-			TIM2->CR1 &= ~(TIM_CR1_CEN);
-			counterValue = TIM2->CNT;
-			frequency = ((48e6)/(counterValue));
-			trace_printf("Signal Frequency: %d \n", (int) frequency);
-			trace_printf("Signal Period: 1/ %d \n", (int) frequency);
-			TIM2->CNT = ((uint32_t) 0x0);
-			stopPrinting = 1;
-		}
-		else {
+		if (!previousEdgeFound /* && !stopPrinting*/) {
 			TIM2->CNT = ((uint32_t) 0x0);
 			TIM2->CR1 |= TIM_CR1_CEN;
 			previousEdgeFound = 1;
 		}
-		EXTI->PR &= ~(EXTI_PR_PR1);
+
+		else
+		{
+			TIM2->CR1 &= ~(TIM_CR1_CEN);
+			counterValue = TIM2->CNT;
+			frequency = ((48000000000)/(counterValue)); // extra factor of 1000 for mHz
+//			trace_printf("Counter Value: %d \n", (unsigned int) counterValue);
+			trace_printf("Signal Frequency: %d mHz\n", (unsigned int) frequency);
+//			trace_printf("Signal Period: 1/ %d \n", (unsigned int) frequency);
+			TIM2->CNT = ((uint32_t) 0x0);
+			previousEdgeFound = 0;
+			//stopPrinting = 1;
+//			TIM2->CR1 |= (TIM_CR1_CEN);
+		}
+		EXTI->PR |= (EXTI_PR_PR1); // to clear, software must write 1
 	}
 }
 
