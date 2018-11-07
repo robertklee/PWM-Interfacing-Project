@@ -16,6 +16,9 @@
 #include "diag/Trace.h"
 #include "cmsis/cmsis_device.h"
 
+#include "stm32f0xx.h"
+#include "stm32f0xx_spi.h"
+
 // ----------------------------------------------------------------------------
 //
 // STM32F0 empty sample (trace via $(trace)).
@@ -42,6 +45,7 @@
 #define myTIM2_PERIOD ((uint32_t)0xFFFFFFFF)
 
 void myGPIOA_Init(void);
+void myGPIOB_Init(void);
 void myTIM2_Init(void);
 void myEXTI_Init(void);
 
@@ -59,10 +63,17 @@ main(int argc, char* argv[]){
     myEXTI_Init();      /* Initialize EXTI */
 
 
+    trace_printf("oh no pooh you're eating loops");
+
+    GPIOB->BRR |= 0x0010;
+
+    while( ((SPI1->SR & 0x0080) != 0) || (SPI1->SR & 0x0002) == 0); // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
+
+
 
     while (1)
     {
-
+    	trace_printf("(loops)");
     }
 
     return 0;
@@ -83,6 +94,42 @@ void myGPIOA_Init()
     /* Ensure no pull-up/pull-down for PA1 */
     // Relevant register: GPIOA->PUPDR
     GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR1);
+}
+
+void myGPIOB_Init()
+{
+    /* Enable clock for GPIOB peripheral */
+    // Relevant register: RCC->AHBENR
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+
+    // set GPIOB[3 and 5] to be AF mode, set GPIOB[4] to be general purpose output
+    GPIOB->MODER = (GPIOB->MODER & ~(0x00000980)) | 0x00000980;
+
+    /* Ensure no pull-up/pull-down for PB3,4,5 */
+    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPDR3 | GPIO_PUPDR_PUPDR4 | GPIO_PUPDR_PUPDR5);
+
+    GPIO_PinAFConfig(GPIOB, 3, GPIO_AF_0); // set PB3's AF to SPI1_SCK
+    GPIO_PinAFConfig(GPIOB, 5, GPIO_AF_0); // set PB5's AF to SPI1_MOSI
+}
+
+void mySPI1_Init()
+{
+	SPI_InitTypeDef SPI_InitStructInfo;
+	SPI_InitTypeDef* SPI_InitStruct = &SPI_InitStructInfo;
+	//TODO...
+	SPI_InitStruct->SPI_Direction = SPI_Direction_1Line_Tx;
+	SPI_InitStruct->SPI_Mode = SPI_Mode_Master;
+	SPI_InitStruct->SPI_DataSize = SPI_DataSize_8b;
+	SPI_InitStruct->SPI_CPOL = SPI_CPOL_Low;
+	SPI_InitStruct->SPI_CPHA = SPI_CPHA_1Edge;
+	SPI_InitStruct->SPI_NSS = SPI_NSS_Soft;
+	SPI_InitStruct->SPI_BaudRatePrescaler = 0; //TODO do we need to change this? ... ;
+	SPI_InitStruct->SPI_FirstBit = SPI_FirstBit_MSB;
+	SPI_InitStruct->SPI_CRCPolynomial = 7;
+	SPI_Init(SPI1, SPI_InitStruct);
+	//TODO ...
+	SPI_Cmd(SPI1, ENABLE);
+
 }
 
 
