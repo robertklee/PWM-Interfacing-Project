@@ -44,10 +44,17 @@
 /* Maximum possible setting for overflow */
 #define myTIM2_PERIOD ((uint32_t)0xFFFFFFFF)
 
+#define myTIM3_PRESCALER ((uint16_t)48000) // bring down to 1 kHz
+#define myTIM3_PERIOD ((uint16_t)5) // wait 5 ms
+
 void myGPIOA_Init(void);
 void myGPIOB_Init(void);
 void myTIM2_Init(void);
+void myTIM3_Init(void);
 void myEXTI_Init(void);
+void mySPI1_Init(void);
+void sendDataLCD(char is_data, char data);
+void send4BitData(char is_data, char data);
 
 volatile unsigned char previousEdgeFound = 0;  // 0/1: first/not first edge
 
@@ -61,18 +68,25 @@ main(int argc, char* argv[]){
     myGPIOA_Init();     /* Initialize I/O port PA */
     myTIM2_Init();      /* Initialize timer TIM2 */
     myEXTI_Init();      /* Initialize EXTI */
+    myGPIOB_Init();
+    mySPI1_Init();
+    myTIM3_Init();
 
+    sendDataLCD(0, 0x20);
+    sendDataLCD(0, 0x28);
+    sendDataLCD(0, 0x0C);
+    sendDataLCD(0, 0x06);
+    sendDataLCD(0, 0x01);
+
+
+    sendDataLCD(1, 'A');
 
     trace_printf("oh no pooh you're eating loops");
-
-    GPIOB->BRR |= 0x0010;
-
-    while( ((SPI1->SR & 0x0080) != 0) || (SPI1->SR & 0x0002) == 0); // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
-
 
 
     while (1)
     {
+
     	trace_printf("(loops)");
     }
 
@@ -168,6 +182,25 @@ void myTIM2_Init()
     TIM2->DIER |= TIM_DIER_UIE;
 }
 
+void myTIM3_Init()
+{
+    /* Enable clock for TIM2 peripheral */
+    // Relevant register: RCC->APB1ENR
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+
+    // Relevant register: TIM2->CR1
+    // Configure TIM3: one-pulse mode, count down, buffer auto-reload, enable update events
+    TIM3->CR1 = ((uint16_t)0x008C);
+
+    /* Set clock prescaler value */
+    TIM3->PSC = myTIM3_PRESCALER;
+    /* Set auto-reloaded delay */
+    TIM3->ARR = myTIM3_PERIOD;
+
+    /* Update timer registers */
+    // Relevant register: TIM2->EGR
+    TIM3->EGR =((uint16_t)0x0001);
+}
 
 void myEXTI_Init()
 {
@@ -191,6 +224,54 @@ void myEXTI_Init()
     /* Enable EXTI1 interrupts in NVIC */
     // Relevant register: NVIC->ISER[0], or use NVIC_EnableIRQ
     NVIC_EnableIRQ(EXTI0_1_IRQn);
+}
+
+void sendDataLCD(char is_data, char data)
+{
+	if (is_data > 1) {
+		trace_printf("is_data flag should be a bool");
+	}
+
+	send4BitData(is_data, (data >> 4)); // send high 4 bits
+	send4BitData(is_data, (data & 0x0F)); // send low 4 bits
+
+}
+
+void send4BitData(char is_data, char data)
+{
+	// PRECONDITIONS: is_data is either 1 or 0
+	// data is 4 bits (bits 4-7 are 0) only
+
+	if (data > 0x0F) {
+		trace_printf("error: data should be only 4 bits");
+	}
+
+	data |= (is_data << 6); // add instruction/data flag to 4 bits
+
+	char enable = 0x0;
+
+	for (int i = 0; i < 3; i++) {
+		GPIOB->BRR |= 0x0010; // force LCK signal to 0
+
+		while( ((SPI1->SR & 0x0080) != 0) && (SPI1->SR & 0x0002) == 0) {}; // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
+
+		char to_send = data | (enable<<7);
+		SPI_SendData8(SPI1, to_send );
+
+		while((SPI1->SR & 0x0080) != 0) {};
+
+		GPIOB->BSRR |= 0x00000010; // force LCK signal to be 1
+
+		// start timer to wait 5 ms
+		TIM3->CR1 |= TIM_CR1_CEN;
+		/* Check if update interrupt flag is indeed set */
+		while ((TIM3->SR & TIM_SR_UIF) == 0) {};
+		/* Clear update interrupt flag */
+		// Relevant register: TIM2->SR
+		TIM3->SR &= ~(TIM_SR_UIF);
+
+		enable = !enable;
+	}
 }
 
 
