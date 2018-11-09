@@ -232,8 +232,8 @@ void sendDataLCD(char is_data, char data)
 		trace_printf("is_data flag should be a bool");
 	}
 
-	send4BitData(is_data, (data >> 4)); // send high 4 bits
-	send4BitData(is_data, (data & 0x0F)); // send low 4 bits
+	send4BitData(is_data, (data >> 4)); 	// send high 4 bits
+	send4BitData(is_data, (data & 0x0F)); 	// send low 4 bits
 
 }
 
@@ -255,7 +255,7 @@ void send4BitData(char is_data, char data)
 
 		while( ((SPI1->SR & 0x0080) != 0) && (SPI1->SR & 0x0002) == 0) {}; // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
 
-		char to_send = data | (enable<<7);
+		char to_send = (data | (enable<<7));
 		SPI_SendData8(SPI1, to_send );
 
 		while((SPI1->SR & 0x0080) != 0) {};
