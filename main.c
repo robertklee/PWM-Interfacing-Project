@@ -126,6 +126,16 @@ void myGPIOB_Init()
     GPIO_PinAFConfig(GPIOB, 5, GPIO_AF_0); // set PB5's AF to SPI1_MOSI
 }
 
+void myGPIOC_Init()
+{
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN; //enable clock for GPIOC peripheral
+
+	GPIOC->MODER;
+
+
+
+}
+
 void mySPI1_Init()
 {
 	SPI_InitTypeDef SPI_InitStructInfo;
@@ -200,6 +210,19 @@ void myTIM3_Init()
     /* Update timer registers */
     // Relevant register: TIM2->EGR
     TIM3->EGR =((uint16_t)0x0001);
+}
+
+myADC_Init()
+{
+	//configure ADC1 for: continuous mode, overrun mode, right-data-align, 12 bit resolution
+	ADC1->CFGR1 = 0x00030000; // page 233 of manual
+
+	//configure ADC to channel 11
+	ADC1->CHSELR |= 0x00000800; // page 211
+
+	ADC1->SMPR |= 0x00000003; // page 237 - configure for 239.5 cycles
+
+	ADC1->CR |= 0x00000001;
 }
 
 void myEXTI_Init()
