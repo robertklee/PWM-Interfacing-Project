@@ -49,10 +49,12 @@
 
 void myGPIOA_Init(void);
 void myGPIOB_Init(void);
+void myGPIOC_Init(void);
 void myTIM2_Init(void);
 void myTIM3_Init(void);
 void myEXTI_Init(void);
 void mySPI1_Init(void);
+void myADC_Init(void);
 void sendDataLCD(char is_data, char data);
 void send4BitData(char is_data, char data);
 
@@ -130,7 +132,11 @@ void myGPIOC_Init()
 {
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN; //enable clock for GPIOC peripheral
 
-	GPIOC->MODER;
+	// set GPIOC[1] to be analog mode
+	GPIOC->MODER = (GPIOC->MODER & ~(0x0000000C)) | 0x0000000C;
+
+	// ensure no pull-up/pull-down for PC1
+	GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPDR1);
 
 
 
@@ -212,7 +218,7 @@ void myTIM3_Init()
     TIM3->EGR =((uint16_t)0x0001);
 }
 
-myADC_Init()
+void myADC_Init()
 {
 	//configure ADC1 for: continuous mode, overrun mode, right-data-align, 12 bit resolution
 	ADC1->CFGR1 = 0x00030000; // page 233 of manual
