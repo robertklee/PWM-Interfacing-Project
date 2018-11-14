@@ -71,9 +71,12 @@ main(int argc, char* argv[]){
     myGPIOA_Init();     /* Initialize I/O port PA */
     myTIM2_Init();      /* Initialize timer TIM2 */
     myEXTI_Init();      /* Initialize EXTI */
+
     myGPIOB_Init();
     mySPI1_Init();
     myTIM3_Init();
+//    myGPIOC_Init();
+//    myADC_Init();
 
     sendDataLCD(0, 0x20);
     sendDataLCD(0, 0x28);
@@ -82,14 +85,14 @@ main(int argc, char* argv[]){
     sendDataLCD(0, 0x01);
 
 
-    sendDataLCD(1, 'A');
+    sendDataLCD(1, 'K');
 
     trace_printf("oh no pooh you're eating loops");
 
 
     while (1)
     {
-
+//    	trace_printf("%d", ADC1->DR);
     	trace_printf("(loops)");
     }
 
@@ -108,7 +111,7 @@ void myGPIOA_Init()
     // Relevant register: GPIOA->MODER
     GPIOA->MODER &= ~(GPIO_MODER_MODER1);
 
-    // Configure PA4 as analog //TODO is this correct for analog output?
+    // Configure PA4 as analog
     GPIOA->MODER |= GPIO_MODER_MODER4;
 
     /* Ensure no pull-up/pull-down for PA1 */ // and no pull-up/pull-down for PA4
@@ -132,8 +135,10 @@ void myGPIOB_Init()
     /* Ensure no pull-up/pull-down for PB3,4,5 */
     GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPDR3 | GPIO_PUPDR_PUPDR4 | GPIO_PUPDR_PUPDR5);
 
-    GPIO_PinAFConfig(GPIOB, 3, GPIO_AF_0); // set PB3's AF to SPI1_SCK
-    GPIO_PinAFConfig(GPIOB, 5, GPIO_AF_0); // set PB5's AF to SPI1_MOSI
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource3, GPIO_AF_0); // set PB3's AF to SPI1_SCK
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource5, GPIO_AF_0); // set PB5's AF to SPI1_MOSI
+
+    GPIOB->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR3 | GPIO_OSPEEDER_OSPEEDR4 | GPIO_OSPEEDER_OSPEEDR5;
 }
 
 void myGPIOC_Init()
@@ -151,18 +156,18 @@ void mySPI1_Init()
 {
 	SPI_InitTypeDef SPI_InitStructInfo;
 	SPI_InitTypeDef* SPI_InitStruct = &SPI_InitStructInfo;
-	//TODO...
+	RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 	SPI_InitStruct->SPI_Direction = SPI_Direction_1Line_Tx;
 	SPI_InitStruct->SPI_Mode = SPI_Mode_Master;
 	SPI_InitStruct->SPI_DataSize = SPI_DataSize_8b;
 	SPI_InitStruct->SPI_CPOL = SPI_CPOL_Low;
 	SPI_InitStruct->SPI_CPHA = SPI_CPHA_1Edge;
 	SPI_InitStruct->SPI_NSS = SPI_NSS_Soft;
-	SPI_InitStruct->SPI_BaudRatePrescaler = 0; //TODO do we need to change this? ... ;
+	SPI_InitStruct->SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256; //TODO do we need to change this? ... ;
 	SPI_InitStruct->SPI_FirstBit = SPI_FirstBit_MSB;
 	SPI_InitStruct->SPI_CRCPolynomial = 7;
 	SPI_Init(SPI1, SPI_InitStruct);
-	//TODO ...
+	//SPI_SSOutputCmd(SPI1, ENABLE); //TODO ...
 	SPI_Cmd(SPI1, ENABLE);
 
 }
@@ -301,10 +306,10 @@ void send4BitData(char is_data, char data)
 
 		while( ((SPI1->SR & 0x0080) != 0) && (SPI1->SR & 0x0002) == 0) {}; // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
 
-		char to_send = (data | (enable<<7));
+		char to_send = (data | (enable << 7));
 		SPI_SendData8(SPI1, to_send );
 
-		while((SPI1->SR & 0x0080) != 0) {};
+		while((SPI1->SR & 0x0080) != 0) {}; // while SPI1 is not busy (BSY = 0)
 
 		GPIOB->BSRR |= 0x00000010; // force LCK signal to be 1
 
