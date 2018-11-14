@@ -55,6 +55,7 @@ void myTIM3_Init(void);
 void myEXTI_Init(void);
 void mySPI1_Init(void);
 void myADC_Init(void);
+void myDAC_Init(void);
 void sendDataLCD(char is_data, char data);
 void send4BitData(char is_data, char data);
 
@@ -107,9 +108,15 @@ void myGPIOA_Init()
     // Relevant register: GPIOA->MODER
     GPIOA->MODER &= ~(GPIO_MODER_MODER1);
 
-    /* Ensure no pull-up/pull-down for PA1 */
+    // Configure PA4 as analog //TODO is this correct for analog output?
+    GPIOA->MODER |= GPIO_MODER_MODER4;
+
+    /* Ensure no pull-up/pull-down for PA1 */ // and no pull-up/pull-down for PA4
     // Relevant register: GPIOA->PUPDR
-    GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR1);
+    GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR1 | GPIO_PUPDR_PUPDR4);
+
+    // configure PA4 for high speed output
+    GPIOA->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR4;
 }
 
 void myGPIOB_Init()
@@ -119,7 +126,8 @@ void myGPIOB_Init()
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
 
     // set GPIOB[3 and 5] to be AF mode, set GPIOB[4] to be general purpose output
-    GPIOB->MODER = (GPIOB->MODER & ~(0x00000980)) | 0x00000980;
+    // ** changed this to & with 0xFC0
+    GPIOB->MODER = (GPIOB->MODER & ~(0x00000FC0)) | 0x00000980;
 
     /* Ensure no pull-up/pull-down for PB3,4,5 */
     GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPDR3 | GPIO_PUPDR_PUPDR4 | GPIO_PUPDR_PUPDR5);
@@ -137,9 +145,6 @@ void myGPIOC_Init()
 
 	// ensure no pull-up/pull-down for PC1
 	GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPDR1);
-
-
-
 }
 
 void mySPI1_Init()
@@ -218,6 +223,8 @@ void myTIM3_Init()
     TIM3->EGR =((uint16_t)0x0001);
 }
 
+// need to include stm32f0xx_adc.c from system->src->stm32f0-stdperiph
+// uses PC1 as ADC input
 void myADC_Init()
 {
 	//configure ADC1 for: continuous mode, overrun mode, right-data-align, 12 bit resolution
@@ -228,7 +235,17 @@ void myADC_Init()
 
 	ADC1->SMPR |= 0x00000003; // page 237 - configure for 239.5 cycles
 
-	ADC1->CR |= 0x00000001;
+	ADC1->CR |= 0x00000001; // enable ADC
+
+	// to access converted data, ADC1->DR // page 238
+}
+
+// need to include stm32f0xx_dac.c from system->src->stm32f0-stdperiph
+// uses PA4 as output pin
+void myDAC_Init()
+{
+	// enable DAC
+	DAC->CR |= 0x00000001;
 }
 
 void myEXTI_Init()
