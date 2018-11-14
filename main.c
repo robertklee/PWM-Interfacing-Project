@@ -78,14 +78,26 @@ main(int argc, char* argv[]){
 //    myGPIOC_Init();
 //    myADC_Init();
 
-    sendDataLCD(0, 0x20);
+    send4BitData(0, (0x20 >> 4)); // NOTE for the first one, don't send lower half as LCD defaults lower half to 0000
     sendDataLCD(0, 0x28);
     sendDataLCD(0, 0x0C);
     sendDataLCD(0, 0x06);
     sendDataLCD(0, 0x01);
 
 
-    sendDataLCD(1, 'K');
+    sendDataLCD(1, 'l');
+    sendDataLCD(1, 'o');
+    sendDataLCD(1, 'o');
+    sendDataLCD(1, 'p');
+    sendDataLCD(1, 's');
+    sendDataLCD(1, ' ');
+    sendDataLCD(1, 'b');
+    sendDataLCD(1, 'r');
+    sendDataLCD(1, 0xF6); // o
+    sendDataLCD(1, 't');
+    sendDataLCD(1, 'h');
+    sendDataLCD(1, 'e');
+    sendDataLCD(1, 'r');
 
     trace_printf("oh no pooh you're eating loops");
 
@@ -167,7 +179,7 @@ void mySPI1_Init()
 	SPI_InitStruct->SPI_FirstBit = SPI_FirstBit_MSB;
 	SPI_InitStruct->SPI_CRCPolynomial = 7;
 	SPI_Init(SPI1, SPI_InitStruct);
-	//SPI_SSOutputCmd(SPI1, ENABLE); //TODO ...
+	SPI_SSOutputCmd(SPI1, ENABLE); //TODO ... figure out what this actually does
 	SPI_Cmd(SPI1, ENABLE);
 
 }
