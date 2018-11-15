@@ -67,74 +67,48 @@ void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits);
 
 volatile unsigned char previousEdgeFound = 0;  // 0/1: first/not first edge
 
+volatile unsigned int previousMilliFreq = 0;
+
 int
 main(int argc, char* argv[]){
 
 
-    trace_printf("This is Part 2 of Introductory Lab...\n");
+    trace_printf("This is Final ECE 355 Project...\n");
     trace_printf("System clock: %u Hz\n", SystemCoreClock);
 
     myGPIOA_Init();     /* Initialize I/O port PA */
     myTIM2_Init();      /* Initialize timer TIM2 */
     myEXTI_Init();      /* Initialize EXTI */
+    myDAC_Init();
 
     myGPIOB_Init();
     mySPI1_Init();
+
     myTIM3_Init();
+
     myGPIOC_Init();
     myADC_Init();
-    myDAC_Init();
 
     myLCD_Init();
 
-
-//    sendDataLCD(0, 0x80);
-//
-//	sendDataLCD(1, ' ');
-//	sendDataLCD(1, ' ');
-//    sendDataLCD(1, 's');
-//    sendDataLCD(1, 'e');
-//    sendDataLCD(1, 'n');
-//    sendDataLCD(1, 'd');
-//	sendDataLCD(1, ' ');
-//    sendDataLCD(1, ' ');
-//
-//    sendDataLCD(0, 0xC0);
-//
-//    sendDataLCD(1, ' ');
-//	sendDataLCD(1, ' ');
-//	sendDataLCD(1, 's');
-//	sendDataLCD(1, 'e');
-//	sendDataLCD(1, 'n');
-//	sendDataLCD(1, 'd');
-//	sendDataLCD(1, ' ');
-//	sendDataLCD(1, ' ');
-
-    updateDisplayNumber(0, 1000);
-    updateDisplayNumber(0, 99);
-    updateDisplayNumber(0, 1000000);
-    updateDisplayNumber(0, 100000000);
-    updateDisplayNumber(1, 10000);
-    updateDisplayNumber(1, 105);
-    updateDisplayNumber(1, 200000000);
-
-    trace_printf("oh no pooh you're eating loops");
-
+    unsigned int milliFreq = 0;
+    unsigned int milliRes = 0;
+    unsigned int adc_result = 0;
 
     while (1)
     {
-
     	if ( (ADC1->ISR & 0x04) != 0 ) {
     		// if end of conversion flag is set
-    		unsigned int adc_result = (ADC1->DR);
-    		//trace_printf("%d\n", adc_result); // page 238 - to access converted data
-
+    		adc_result = (ADC1->DR);
     		DAC->DHR12R1 = adc_result;
     		DAC->SWTRIGR |= 0x01;
-    		trace_printf("%d\n", adc_result);
-
     	}
-    	trace_printf("(loops)\n");
+
+    	milliRes = ((adc_result*1000)/4095)*5000;
+    	updateDisplayNumber(0, milliFreq);
+		updateDisplayNumber(1, milliRes);
+
+    	milliFreq = previousMilliFreq;
     }
 
     return 0;
@@ -475,8 +449,8 @@ void TIM2_IRQHandler()
 void EXTI0_1_IRQHandler()
 {
     // Your local variables...
-    volatile unsigned int frequency = 0;
-    volatile unsigned int period = 0;
+//    volatile unsigned int frequency = 0; // TODO remove
+//    volatile unsigned int period = 0;
     volatile unsigned int counterValue = 0;
     /* Check if EXTI1 interrupt pending flag is indeed set */
     if ((EXTI->PR & EXTI_PR_PR1) != 0)
@@ -509,10 +483,7 @@ void EXTI0_1_IRQHandler()
             TIM2->CR1 &= ~(TIM_CR1_CEN);
             EXTI->IMR &= ~((uint32_t) 0x00000002);
             counterValue = TIM2->CNT;
-            frequency = (unsigned int)((48000000000.0)/(counterValue)); // extra factor of 1000 for mHz
-            trace_printf("Signal Frequency: %d.%03d Hz\t", frequency/1000, frequency%1000);
-            period = 1000000000.0 / frequency; //period in ms
-            trace_printf("Signal Period: %d.%06d s \n", period/1000000, period%1000000);
+            previousMilliFreq = (unsigned int)((48000000000.0)/(counterValue)); // extra factor of 1000 for mHz
             TIM2->CNT = ((uint32_t) 0x0);
             previousEdgeFound = 0;
             EXTI->IMR |= ((uint32_t) 0x00000002);
