@@ -124,16 +124,16 @@ main(int argc, char* argv[]){
     while (1)
     {
 
-//    	if ( (ADC1->ISR & 0x04) != 0 ) {
-//    		// if end of conversion flag is set
-//    		unsigned int adc_result = (ADC1->DR);
-//    		//trace_printf("%d\n", adc_result); // page 238 - to access converted data
-//
-//    		DAC->DHR12R1 = adc_result;
-//    		DAC->SWTRIGR |= 0x01;
-//    		trace_printf("%d\n", adc_result);
-//
-//    	}
+    	if ( (ADC1->ISR & 0x04) != 0 ) {
+    		// if end of conversion flag is set
+    		unsigned int adc_result = (ADC1->DR);
+    		//trace_printf("%d\n", adc_result); // page 238 - to access converted data
+
+    		DAC->DHR12R1 = adc_result;
+    		DAC->SWTRIGR |= 0x01;
+    		trace_printf("%d\n", adc_result);
+
+    	}
     	trace_printf("(loops)\n");
     }
 
@@ -307,7 +307,7 @@ void myLCD_Init()
 	sendDataLCD(0, 0x28); // function set: DDRAM access performed using 4-bit interface, 2 lines of 8 characters
 	sendDataLCD(0, 0x0C); // display is on, cursor is not displayed and not blinking
 	sendDataLCD(0, 0x06); // auto-increment DDRAM address after each access
-	sendDataLCD(0, 0x0F); // sets cursor to be visible
+//	sendDataLCD(0, 0x0F); // sets cursor to be visible
 	sendDataLCD(0, 0x01); // display clear
 }
 
