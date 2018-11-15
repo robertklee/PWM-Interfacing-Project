@@ -61,8 +61,9 @@ void myDAC_Init(void);
 void myLCD_Init(void);
 void sendDataLCD(unsigned char is_data, unsigned char data);
 void send4BitData(unsigned char is_data, unsigned char data);
-void updateDisplayOneLine(unsigned char isLowerLine, unsigned char[] singleLineMessage);
-void updateDisplayTwoLine(unsigned char[] twoLineMessage);
+void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMessage);
+void updateDisplayTwoLine(unsigned char* twoLineMessage);
+void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits);
 
 volatile unsigned char previousEdgeFound = 0;  // 0/1: first/not first edge
 
@@ -87,27 +88,35 @@ main(int argc, char* argv[]){
     myLCD_Init();
 
 
-    sendDataLCD(0, 0x80);
+//    sendDataLCD(0, 0x80);
+//
+//	sendDataLCD(1, ' ');
+//	sendDataLCD(1, ' ');
+//    sendDataLCD(1, 's');
+//    sendDataLCD(1, 'e');
+//    sendDataLCD(1, 'n');
+//    sendDataLCD(1, 'd');
+//	sendDataLCD(1, ' ');
+//    sendDataLCD(1, ' ');
+//
+//    sendDataLCD(0, 0xC0);
+//
+//    sendDataLCD(1, ' ');
+//	sendDataLCD(1, ' ');
+//	sendDataLCD(1, 's');
+//	sendDataLCD(1, 'e');
+//	sendDataLCD(1, 'n');
+//	sendDataLCD(1, 'd');
+//	sendDataLCD(1, ' ');
+//	sendDataLCD(1, ' ');
 
-	sendDataLCD(1, ' ');
-	sendDataLCD(1, ' ');
-    sendDataLCD(1, 's');
-    sendDataLCD(1, 'e');
-    sendDataLCD(1, 'n');
-    sendDataLCD(1, 'd');
-	sendDataLCD(1, ' ');
-    sendDataLCD(1, ' ');
-
-    sendDataLCD(0, 0xC0);
-
-    sendDataLCD(1, ' ');
-	sendDataLCD(1, ' ');
-	sendDataLCD(1, 's');
-	sendDataLCD(1, 'e');
-	sendDataLCD(1, 'n');
-	sendDataLCD(1, 'd');
-	sendDataLCD(1, ' ');
-	sendDataLCD(1, ' ');
+    updateDisplayNumber(0, 1000);
+    updateDisplayNumber(0, 99);
+    updateDisplayNumber(0, 1000000);
+    updateDisplayNumber(0, 100000000);
+    updateDisplayNumber(1, 10000);
+    updateDisplayNumber(1, 105);
+    updateDisplayNumber(1, 200000000);
 
     trace_printf("oh no pooh you're eating loops");
 
@@ -115,16 +124,16 @@ main(int argc, char* argv[]){
     while (1)
     {
 
-    	if ( (ADC1->ISR & 0x04) != 0 ) {
-    		// if end of conversion flag is set
-    		unsigned int adc_result = (ADC1->DR);
-    		//trace_printf("%d\n", adc_result); // page 238 - to access converted data
-
-    		DAC->DHR12R1 = adc_result;
-    		DAC->SWTRIGR |= 0x01;
-    		trace_printf("%d\n", adc_result);
-
-    	}
+//    	if ( (ADC1->ISR & 0x04) != 0 ) {
+//    		// if end of conversion flag is set
+//    		unsigned int adc_result = (ADC1->DR);
+//    		//trace_printf("%d\n", adc_result); // page 238 - to access converted data
+//
+//    		DAC->DHR12R1 = adc_result;
+//    		DAC->SWTRIGR |= 0x01;
+//    		trace_printf("%d\n", adc_result);
+//
+//    	}
     	trace_printf("(loops)\n");
     }
 
@@ -298,7 +307,7 @@ void myLCD_Init()
 	sendDataLCD(0, 0x28); // function set: DDRAM access performed using 4-bit interface, 2 lines of 8 characters
 	sendDataLCD(0, 0x0C); // display is on, cursor is not displayed and not blinking
 	sendDataLCD(0, 0x06); // auto-increment DDRAM address after each access
-//	sendDataLCD(0, 0x0F); // sets cursor to be visible
+	sendDataLCD(0, 0x0F); // sets cursor to be visible
 	sendDataLCD(0, 0x01); // display clear
 }
 
@@ -376,21 +385,23 @@ void send4BitData(unsigned char is_data, unsigned char data)
 	}
 }
 
-void updateDisplayOneLine(unsigned char isLowerLine, unsigned char[] singleLineMessage) 
+void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMessage)
 {
     if (isLowerLine > 1) {
         trace_printf("ERROR: isLowerLine flag should be a bool");
         isLowerLine = (isLowerLine > 1); //convert to a bool
     }
 
-    sendDataLCD(0, (0x80 | isLowerLine << 6));
+    unsigned char address = (0x80 | isLowerLine << 6);
 
-    for (int i = 0; i < sizeof(char); i++) {
+    sendDataLCD(0, address);
+
+    for (unsigned int i = 0; i < sizeof(char)*8; i++) {
         sendDataLCD(1, singleLineMessage[i]);
     }
 }
 
-void updateDisplayTwoLine(unsigned char[] twoLineMessage)
+void updateDisplayTwoLine(unsigned char* twoLineMessage)
 {
     updateDisplayOneLine(0, &twoLineMessage[0]);
     updateDisplayOneLine(1, &twoLineMessage[8]);
@@ -403,7 +414,7 @@ void updateDisplayTwoLine(unsigned char[] twoLineMessage)
  * 1 Hz <= frequency < 100 Hz       |   "F:xxxmHz"
 */
 void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits) {
-    unsigned char[] lineTemplate = "F:xxxxHz";
+    unsigned char lineTemplate[] = "F:xxxxHz";
     if (isResistance) {
         lineTemplate[0] = 'R';
         lineTemplate[6] = ' ';
@@ -411,7 +422,7 @@ void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits) {
     }
 
     int divisor = 1000; // avoid using math.pow in case it slows down board. TODO add in later
-    int numberOfDigits = 4; 
+    int numberOfDigits = 4;
     unsigned int numberToDisplay = milliUnits;
     if (milliUnits >= 1e9) {
         // if more than 1 Mega Unit
@@ -427,14 +438,18 @@ void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits) {
         divisor = 100;
         lineTemplate[5] = 'm';
         numberOfDigits = 3;
+    } else {
+    	numberToDisplay = milliUnits / 1e3;
     }
 
-    for (int i = numberOfDigits; i > 0; i--) {
-        lineTemplate[1+i] = intToString[(int)(numberToDisplay / divisor)];
+    for (int i = 0; i < numberOfDigits; i++) {
+        lineTemplate[2+i] = intToString[(int)(numberToDisplay / divisor)];
         numberToDisplay %= divisor;
         divisor /= 10;
         if (divisor == 0) { break; }
     }
+
+    updateDisplayOneLine(isResistance, &lineTemplate[0]);
 }
 
 /* This handler is declared in system/src/cmsis/vectors_stm32f0xx.c */
