@@ -47,6 +47,8 @@
 #define myTIM3_PRESCALER ((uint16_t)48000) // bring down to 1 kHz
 #define myTIM3_PERIOD ((uint16_t)5) // wait 5 ms
 
+const unsigned char intToString[10] = "0123456789";
+
 void myGPIOA_Init(void);
 void myGPIOB_Init(void);
 void myGPIOC_Init(void);
@@ -59,6 +61,8 @@ void myDAC_Init(void);
 void myLCD_Init(void);
 void sendDataLCD(unsigned char is_data, unsigned char data);
 void send4BitData(unsigned char is_data, unsigned char data);
+void updateDisplayOneLine(unsigned char isLowerLine, unsigned char[] singleLineMessage);
+void updateDisplayTwoLine(unsigned char[] twoLineMessage);
 
 volatile unsigned char previousEdgeFound = 0;  // 0/1: first/not first edge
 
@@ -372,6 +376,55 @@ void send4BitData(unsigned char is_data, unsigned char data)
 	}
 }
 
+void updateDisplayOneLine(unsigned char isLowerLine, unsigned char[] singleLineMessage) 
+{
+    if (isLowerLine > 1) {
+        trace_printf("ERROR: isLowerLine flag should be a bool");
+        isLowerLine = (isLowerLine > 1); //convert to a bool
+    }
+
+    sendDataLCD(0, (0x80 | isLowerLine << 6));
+
+    for (int i = 0; i < sizeof(char); i++) {
+        sendDataLCD(1, singleLineMessage[i]);
+    }
+}
+
+void updateDisplayTwoLine(unsigned char[] twoLineMessage)
+{
+    updateDisplayOneLine(0, &twoLineMessage[0]);
+    updateDisplayOneLine(1, &twoLineMessage[8]);
+}
+
+/**
+ *          Interval                |    Format
+ * 10 kHz <= frequency < 1 MHz      |   "F:xxxkHz"
+ * 100 Hz <= frequency < 10 kHz     |   "F:xxxxHz"
+ * 1 Hz <= frequency < 100 Hz       |   "F:xxxmHz"
+*/
+void updateDisplayNumber(unsigned char isFrequency, unsigned int milliUnits) {
+    unsigned char[] lineTemplate = "R:xxxx O";
+    if (isFrequency)
+    int digitsToDisplay = 4;
+    unsigned int numberToDisplay = milliUnits;
+    if (milliUnits >= 1e9) {
+        // if more than 1 Mega Unit
+        trace_printf("ERROR: unimplemented error");
+    } else if (milliUnits >= 1e7) {
+        //if more than 10 kUnits
+        numberToDisplay = milliUnits / 1e6;
+        digitsToDisplay = 3;
+        lineTemplate[5] = 'k';
+    } else if (milliUnits < 1e3) {
+        // if less than 1 Unit
+        digitsToDisplay = 3;
+        lineTemplate[5] = 'm';
+    }
+
+    for (int i = 0; i < digitsToDisplay; i++) {
+
+    }
+}
 
 /* This handler is declared in system/src/cmsis/vectors_stm32f0xx.c */
 void TIM2_IRQHandler()
