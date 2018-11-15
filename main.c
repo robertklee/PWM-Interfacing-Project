@@ -56,6 +56,7 @@ void myEXTI_Init(void);
 void mySPI1_Init(void);
 void myADC_Init(void);
 void myDAC_Init(void);
+void myLCD_Init(void);
 void sendDataLCD(unsigned char is_data, unsigned char data);
 void send4BitData(unsigned char is_data, unsigned char data);
 
@@ -78,15 +79,11 @@ main(int argc, char* argv[]){
 //    myGPIOC_Init();
 //    myADC_Init();
 
-    send4BitData(0, (0x20 >> 4)); // NOTE for the first one, don't send lower half as LCD defaults lower half to 0000
-    sendDataLCD(0, 0x28);
-    sendDataLCD(0, 0x0C);
-    sendDataLCD(0, 0x06);
-    sendDataLCD(0, 0x0F);
-    sendDataLCD(0, 0x01);
+    myLCD_Init();
 
 
     sendDataLCD(0, 0x80);
+
 	sendDataLCD(1, ' ');
 	sendDataLCD(1, ' ');
     sendDataLCD(1, 's');
@@ -176,14 +173,14 @@ void mySPI1_Init()
 {
 	SPI_InitTypeDef SPI_InitStructInfo;
 	SPI_InitTypeDef* SPI_InitStruct = &SPI_InitStructInfo;
-	RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+	RCC->APB2ENR |= RCC_APB2ENR_SPI1EN; //enable SPI clock
 	SPI_InitStruct->SPI_Direction = SPI_Direction_1Line_Tx;
 	SPI_InitStruct->SPI_Mode = SPI_Mode_Master;
 	SPI_InitStruct->SPI_DataSize = SPI_DataSize_8b;
 	SPI_InitStruct->SPI_CPOL = SPI_CPOL_Low;
 	SPI_InitStruct->SPI_CPHA = SPI_CPHA_1Edge;
 	SPI_InitStruct->SPI_NSS = SPI_NSS_Soft;
-	SPI_InitStruct->SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256; //TODO do we need to change this? ... ;
+	SPI_InitStruct->SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256;
 	SPI_InitStruct->SPI_FirstBit = SPI_FirstBit_MSB;
 	SPI_InitStruct->SPI_CRCPolynomial = 7;
 	SPI_Init(SPI1, SPI_InitStruct);
@@ -271,6 +268,17 @@ void myDAC_Init()
 {
 	// enable DAC
 	DAC->CR |= 0x00000001;
+}
+
+void myLCD_Init()
+{
+	// NOTE for the first one, don't send lower half as LCD defaults lower half to 0000
+	send4BitData(0, (0x20 >> 4)); // configure to 4 bit interface
+	sendDataLCD(0, 0x28); // function set: DDRAM access performed using 4-bit interface, 2 lines of 8 characters
+	sendDataLCD(0, 0x0C); // display is on, cursor is not displayed and not blinking
+	sendDataLCD(0, 0x06); // auto-increment DDRAM address after each access
+//	sendDataLCD(0, 0x0F); // sets cursor to be visible
+	sendDataLCD(0, 0x01); // display clear
 }
 
 void myEXTI_Init()
