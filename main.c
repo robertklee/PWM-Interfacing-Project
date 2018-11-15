@@ -325,7 +325,8 @@ void myEXTI_Init()
 void sendDataLCD(unsigned char is_data, unsigned char data)
 {
 	if (is_data > 1) {
-		trace_printf("is_data flag should be a bool");
+		trace_printf("ERROR: is_data flag should be a bool");
+        is_data = (is_data > 1); //convert to a boolean
 	}
 
 	send4BitData(is_data, (data >> 4)); 	// send high 4 bits
@@ -339,7 +340,8 @@ void send4BitData(unsigned char is_data, unsigned char data)
 	// data is 4 bits (bits 4-7 are 0) only
 
 	if (data > 0x0F) {
-		trace_printf("error: data should be only 4 bits");
+		trace_printf("ERROR: data should be only 4 bits");
+        data &= 0x0F; // default to expected parameter
 	}
 
 	data |= (is_data << 6); // add instruction/data flag to 4 bits
