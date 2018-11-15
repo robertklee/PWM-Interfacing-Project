@@ -120,9 +120,9 @@ main(int argc, char* argv[]){
     		unsigned int adc_result = (ADC1->DR);
     		//trace_printf("%d\n", adc_result); // page 238 - to access converted data
 
-    		DAC->DHR12R1 = (0xFFF & adc_result);
+    		DAC->DHR12R1 = adc_result;
     		DAC->SWTRIGR |= 0x01;
-    		trace_printf("%d\n", 0xFFF & adc_result);
+    		trace_printf("%d\n", adc_result);
 
     	}
     	trace_printf("(loops)\n");
@@ -402,10 +402,16 @@ void updateDisplayTwoLine(unsigned char[] twoLineMessage)
  * 100 Hz <= frequency < 10 kHz     |   "F:xxxxHz"
  * 1 Hz <= frequency < 100 Hz       |   "F:xxxmHz"
 */
-void updateDisplayNumber(unsigned char isFrequency, unsigned int milliUnits) {
-    unsigned char[] lineTemplate = "R:xxxx O";
-    if (isFrequency)
-    int digitsToDisplay = 4;
+void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits) {
+    unsigned char[] lineTemplate = "F:xxxxHz";
+    if (isResistance) {
+        lineTemplate[0] = 'R';
+        lineTemplate[6] = ' ';
+        lineTemplate[7] = 0xF4;
+    }
+
+    int divisor = 1000; // avoid using math.pow in case it slows down board. TODO add in later
+    int numberOfDigits = 4; 
     unsigned int numberToDisplay = milliUnits;
     if (milliUnits >= 1e9) {
         // if more than 1 Mega Unit
@@ -413,16 +419,21 @@ void updateDisplayNumber(unsigned char isFrequency, unsigned int milliUnits) {
     } else if (milliUnits >= 1e7) {
         //if more than 10 kUnits
         numberToDisplay = milliUnits / 1e6;
-        digitsToDisplay = 3;
+        divisor = 100;
         lineTemplate[5] = 'k';
+        numberOfDigits = 3;
     } else if (milliUnits < 1e3) {
         // if less than 1 Unit
-        digitsToDisplay = 3;
+        divisor = 100;
         lineTemplate[5] = 'm';
+        numberOfDigits = 3;
     }
 
-    for (int i = 0; i < digitsToDisplay; i++) {
-
+    for (int i = numberOfDigits; i > 0; i--) {
+        lineTemplate[1+i] = intToString[(int)(numberToDisplay / divisor)];
+        numberToDisplay %= divisor;
+        divisor /= 10;
+        if (divisor == 0) { break; }
     }
 }
 
