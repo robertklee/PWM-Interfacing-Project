@@ -76,8 +76,8 @@ main(int argc, char* argv[]){
     myGPIOB_Init();
     mySPI1_Init();
     myTIM3_Init();
-//    myGPIOC_Init();
-//    myADC_Init();
+    myGPIOC_Init();
+    myADC_Init();
 
     myLCD_Init();
 
@@ -109,8 +109,13 @@ main(int argc, char* argv[]){
 
     while (1)
     {
-//    	trace_printf("%d", ADC1->DR);
-    	trace_printf("(loops)");
+
+    	if ( (ADC1->ISR & 0x04) != 0 ) {
+    		// if end of conversion flag is set
+    		unsigned int adc_result = (ADC1->DR);
+    		trace_printf("%d\n", adc_result); // page 238 - to access converted data
+    	}
+    	trace_printf("(loops)\n");
     }
 
     return 0;
@@ -177,6 +182,7 @@ void mySPI1_Init()
 	SPI_InitTypeDef SPI_InitStructInfo;
 	SPI_InitTypeDef* SPI_InitStruct = &SPI_InitStructInfo;
 	RCC->APB2ENR |= RCC_APB2ENR_SPI1EN; //enable SPI clock
+
 	SPI_InitStruct->SPI_Direction = SPI_Direction_1Line_Tx;
 	SPI_InitStruct->SPI_Mode = SPI_Mode_Master;
 	SPI_InitStruct->SPI_DataSize = SPI_DataSize_8b;
@@ -250,23 +256,24 @@ void myTIM3_Init()
 // uses PC1 as ADC input
 void myADC_Init()
 {
-	//configure ADC1 for: continuous mode, overrun mode, right-data-align, 12 bit resolution
-	ADC1->CFGR1 = 0x00030000; // page 233 of manual
+	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; //enable ADC1 clock
 
-	//configure ADC to channel 11
-	ADC1->CHSELR |= 0x00000800; // page 211
+	//configure ADC1 for: continuous mode, overrun mode, right-data-align, 12 bit resolution
+	ADC1->CFGR1 = 0x00003000; // page 233 of manual
+
+	ADC1->CHSELR |= 0x00000800; // page 211 - configure ADC to channel 11
 
 	ADC1->SMPR |= 0x00000003; // page 237 - configure for 239.5 cycles
 
-	ADC1->CR |= 0x00000001; // enable ADC
+	ADC1->CR |= 0x00000005; // enable ADC and start conversion
 
-	// to access converted data, ADC1->DR // page 238
 }
 
 // need to include stm32f0xx_dac.c from system->src->stm32f0-stdperiph
 // uses PA4 as output pin
 void myDAC_Init()
 {
+	RCC->APB2ENR |= RCC_APB1ENR_DACEN; // enable DAC clock
 	// enable DAC
 	DAC->CR |= 0x00000001;
 }
