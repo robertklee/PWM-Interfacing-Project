@@ -56,8 +56,8 @@ void myEXTI_Init(void);
 void mySPI1_Init(void);
 void myADC_Init(void);
 void myDAC_Init(void);
-void sendDataLCD(char is_data, char data);
-void send4BitData(char is_data, char data);
+void sendDataLCD(unsigned char is_data, unsigned char data);
+void send4BitData(unsigned char is_data, unsigned char data);
 
 volatile unsigned char previousEdgeFound = 0;  // 0/1: first/not first edge
 
@@ -82,22 +82,30 @@ main(int argc, char* argv[]){
     sendDataLCD(0, 0x28);
     sendDataLCD(0, 0x0C);
     sendDataLCD(0, 0x06);
+    sendDataLCD(0, 0x0F);
     sendDataLCD(0, 0x01);
 
 
-    sendDataLCD(1, 'l');
-    sendDataLCD(1, 'o');
-    sendDataLCD(1, 'o');
-    sendDataLCD(1, 'p');
+    sendDataLCD(0, 0x80);
+	sendDataLCD(1, ' ');
+	sendDataLCD(1, ' ');
     sendDataLCD(1, 's');
-    sendDataLCD(1, ' ');
-    sendDataLCD(1, 'b');
-    sendDataLCD(1, 'r');
-    sendDataLCD(1, 0xF6); // o
-    sendDataLCD(1, 't');
-    sendDataLCD(1, 'h');
     sendDataLCD(1, 'e');
-    sendDataLCD(1, 'r');
+    sendDataLCD(1, 'n');
+    sendDataLCD(1, 'd');
+	sendDataLCD(1, ' ');
+    sendDataLCD(1, ' ');
+
+    sendDataLCD(0, 0xC0);
+
+    sendDataLCD(1, ' ');
+	sendDataLCD(1, ' ');
+	sendDataLCD(1, 's');
+	sendDataLCD(1, 'e');
+	sendDataLCD(1, 'n');
+	sendDataLCD(1, 'd');
+	sendDataLCD(1, ' ');
+	sendDataLCD(1, ' ');
 
     trace_printf("oh no pooh you're eating loops");
 
@@ -289,7 +297,7 @@ void myEXTI_Init()
     NVIC_EnableIRQ(EXTI0_1_IRQn);
 }
 
-void sendDataLCD(char is_data, char data)
+void sendDataLCD(unsigned char is_data, unsigned char data)
 {
 	if (is_data > 1) {
 		trace_printf("is_data flag should be a bool");
@@ -300,7 +308,7 @@ void sendDataLCD(char is_data, char data)
 
 }
 
-void send4BitData(char is_data, char data)
+void send4BitData(unsigned char is_data, unsigned char data)
 {
 	// PRECONDITIONS: is_data is either 1 or 0
 	// data is 4 bits (bits 4-7 are 0) only
@@ -311,14 +319,14 @@ void send4BitData(char is_data, char data)
 
 	data |= (is_data << 6); // add instruction/data flag to 4 bits
 
-	char enable = 0x0;
+	unsigned char enable = 0x0;
 
 	for (int i = 0; i < 3; i++) {
 		GPIOB->BRR |= 0x0010; // force LCK signal to 0
 
 		while( ((SPI1->SR & 0x0080) != 0) && (SPI1->SR & 0x0002) == 0) {}; // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
 
-		char to_send = (data | (enable << 7));
+		unsigned char to_send = (data | (enable << 7));
 		SPI_SendData8(SPI1, to_send );
 
 		while((SPI1->SR & 0x0080) != 0) {}; // while SPI1 is not busy (BSY = 0)
