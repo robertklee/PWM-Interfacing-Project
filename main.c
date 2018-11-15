@@ -139,6 +139,7 @@ void myGPIOA_Init()
     GPIOA->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR4;
 }
 
+// initialize PB 3,4,5 for SPI
 void myGPIOB_Init()
 {
     /* Enable clock for GPIOB peripheral */
@@ -155,15 +156,17 @@ void myGPIOB_Init()
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource3, GPIO_AF_0); // set PB3's AF to SPI1_SCK
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource5, GPIO_AF_0); // set PB5's AF to SPI1_MOSI
 
+    // configure PB3,4,5 for high speed output
     GPIOB->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR3 | GPIO_OSPEEDER_OSPEEDR4 | GPIO_OSPEEDER_OSPEEDR5;
 }
 
+// initialize PC1 for ADC
 void myGPIOC_Init()
 {
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN; //enable clock for GPIOC peripheral
 
 	// set GPIOC[1] to be analog mode
-	GPIOC->MODER = (GPIOC->MODER & ~(0x0000000C)) | 0x0000000C;
+	GPIOC->MODER |= 0x0000000C;
 
 	// ensure no pull-up/pull-down for PC1
 	GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPDR1);
@@ -186,9 +189,7 @@ void mySPI1_Init()
 	SPI_Init(SPI1, SPI_InitStruct);
 	SPI_SSOutputCmd(SPI1, ENABLE); //TODO ... figure out what this actually does
 	SPI_Cmd(SPI1, ENABLE);
-
 }
-
 
 void myTIM2_Init()
 {
