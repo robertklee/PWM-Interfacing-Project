@@ -47,6 +47,8 @@
 #define myTIM3_PRESCALER ((uint16_t)48000) // bring down to 1 kHz
 #define myTIM3_PERIOD ((uint16_t)5) // wait 5 ms
 
+const unsigned char intToString[10] = "0123456789";
+
 void myGPIOA_Init(void);
 void myGPIOB_Init(void);
 void myGPIOC_Init(void);
@@ -59,6 +61,9 @@ void myDAC_Init(void);
 void myLCD_Init(void);
 void sendDataLCD(unsigned char is_data, unsigned char data);
 void send4BitData(unsigned char is_data, unsigned char data);
+void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMessage);
+void updateDisplayTwoLine(unsigned char* twoLineMessage);
+void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits);
 
 volatile unsigned char previousEdgeFound = 0;  // 0/1: first/not first edge
 
@@ -83,27 +88,35 @@ main(int argc, char* argv[]){
     myLCD_Init();
 
 
-    sendDataLCD(0, 0x80);
+//    sendDataLCD(0, 0x80);
+//
+//	sendDataLCD(1, ' ');
+//	sendDataLCD(1, ' ');
+//    sendDataLCD(1, 's');
+//    sendDataLCD(1, 'e');
+//    sendDataLCD(1, 'n');
+//    sendDataLCD(1, 'd');
+//	sendDataLCD(1, ' ');
+//    sendDataLCD(1, ' ');
+//
+//    sendDataLCD(0, 0xC0);
+//
+//    sendDataLCD(1, ' ');
+//	sendDataLCD(1, ' ');
+//	sendDataLCD(1, 's');
+//	sendDataLCD(1, 'e');
+//	sendDataLCD(1, 'n');
+//	sendDataLCD(1, 'd');
+//	sendDataLCD(1, ' ');
+//	sendDataLCD(1, ' ');
 
-	sendDataLCD(1, ' ');
-	sendDataLCD(1, ' ');
-    sendDataLCD(1, 's');
-    sendDataLCD(1, 'e');
-    sendDataLCD(1, 'n');
-    sendDataLCD(1, 'd');
-	sendDataLCD(1, ' ');
-    sendDataLCD(1, ' ');
-
-    sendDataLCD(0, 0xC0);
-
-    sendDataLCD(1, ' ');
-	sendDataLCD(1, ' ');
-	sendDataLCD(1, 's');
-	sendDataLCD(1, 'e');
-	sendDataLCD(1, 'n');
-	sendDataLCD(1, 'd');
-	sendDataLCD(1, ' ');
-	sendDataLCD(1, ' ');
+    updateDisplayNumber(0, 1000);
+    updateDisplayNumber(0, 99);
+    updateDisplayNumber(0, 1000000);
+    updateDisplayNumber(0, 100000000);
+    updateDisplayNumber(1, 10000);
+    updateDisplayNumber(1, 105);
+    updateDisplayNumber(1, 200000000);
 
     trace_printf("oh no pooh you're eating loops");
 
@@ -116,9 +129,9 @@ main(int argc, char* argv[]){
     		unsigned int adc_result = (ADC1->DR);
     		//trace_printf("%d\n", adc_result); // page 238 - to access converted data
 
-    		DAC->DHR12R1 = (0xFFF & adc_result);
+    		DAC->DHR12R1 = adc_result;
     		DAC->SWTRIGR |= 0x01;
-    		trace_printf("%d\n", 0xFFF & adc_result);
+    		trace_printf("%d\n", adc_result);
 
     	}
     	trace_printf("(loops)\n");
@@ -372,6 +385,72 @@ void send4BitData(unsigned char is_data, unsigned char data)
 	}
 }
 
+void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMessage)
+{
+    if (isLowerLine > 1) {
+        trace_printf("ERROR: isLowerLine flag should be a bool");
+        isLowerLine = (isLowerLine > 1); //convert to a bool
+    }
+
+    unsigned char address = (0x80 | isLowerLine << 6);
+
+    sendDataLCD(0, address);
+
+    for (unsigned int i = 0; i < sizeof(char)*8; i++) {
+        sendDataLCD(1, singleLineMessage[i]);
+    }
+}
+
+void updateDisplayTwoLine(unsigned char* twoLineMessage)
+{
+    updateDisplayOneLine(0, &twoLineMessage[0]);
+    updateDisplayOneLine(1, &twoLineMessage[8]);
+}
+
+/**
+ *          Interval                |    Format
+ * 10 kHz <= frequency < 1 MHz      |   "F:xxxkHz"
+ * 100 Hz <= frequency < 10 kHz     |   "F:xxxxHz"
+ * 1 Hz <= frequency < 100 Hz       |   "F:xxxmHz"
+*/
+void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits) {
+    unsigned char lineTemplate[] = "F:xxxxHz";
+    if (isResistance) {
+        lineTemplate[0] = 'R';
+        lineTemplate[6] = ' ';
+        lineTemplate[7] = 0xF4;
+    }
+
+    int divisor = 1000; // avoid using math.pow in case it slows down board. TODO add in later
+    int numberOfDigits = 4;
+    unsigned int numberToDisplay = milliUnits;
+    if (milliUnits >= 1e9) {
+        // if more than 1 Mega Unit
+        trace_printf("ERROR: unimplemented error");
+    } else if (milliUnits >= 1e7) {
+        //if more than 10 kUnits
+        numberToDisplay = milliUnits / 1e6;
+        divisor = 100;
+        lineTemplate[5] = 'k';
+        numberOfDigits = 3;
+    } else if (milliUnits < 1e3) {
+        // if less than 1 Unit
+        divisor = 100;
+        lineTemplate[5] = 'm';
+        numberOfDigits = 3;
+    } else {
+    	numberToDisplay = milliUnits / 1e3;
+    }
+
+    for (int i = 0; i < numberOfDigits; i++) {
+        lineTemplate[2+i] = intToString[(int)(numberToDisplay / divisor)];
+        numberToDisplay %= divisor;
+        divisor /= 10;
+        if (divisor == 0) { break; }
+    }
+
+    updateDisplayOneLine(isResistance, &lineTemplate[0]);
+}
 
 /* This handler is declared in system/src/cmsis/vectors_stm32f0xx.c */
 void TIM2_IRQHandler()
