@@ -78,6 +78,7 @@ main(int argc, char* argv[]){
     myTIM3_Init();
     myGPIOC_Init();
     myADC_Init();
+    myDAC_Init();
 
     myLCD_Init();
 
@@ -113,7 +114,12 @@ main(int argc, char* argv[]){
     	if ( (ADC1->ISR & 0x04) != 0 ) {
     		// if end of conversion flag is set
     		unsigned int adc_result = (ADC1->DR);
-    		trace_printf("%d\n", adc_result); // page 238 - to access converted data
+    		//trace_printf("%d\n", adc_result); // page 238 - to access converted data
+
+    		DAC->DHR12R1 = (0xFFF & adc_result);
+    		DAC->SWTRIGR |= 0x01;
+    		trace_printf("%d\n", 0xFFF & adc_result);
+
     	}
     	trace_printf("(loops)\n");
     }
@@ -273,9 +279,12 @@ void myADC_Init()
 // uses PA4 as output pin
 void myDAC_Init()
 {
-	RCC->APB2ENR |= RCC_APB1ENR_DACEN; // enable DAC clock
+	RCC->APB1ENR |= RCC_APB1ENR_DACEN; // enable DAC clock
 	// enable DAC
+	DAC->CR |= 0x0000003E;
 	DAC->CR |= 0x00000001;
+
+	// write to DAC->DACC1DHR[11:0] for right-aligned 12 bit data.
 }
 
 void myLCD_Init()
@@ -316,8 +325,7 @@ void myEXTI_Init()
 void sendDataLCD(unsigned char is_data, unsigned char data)
 {
 	if (is_data > 1) {
-		trace_printf("ERROR: is_data flag should be a bool");
-        is_data = (is_data > 1); //convert to a boolean
+		trace_printf("is_data flag should be a bool");
 	}
 
 	send4BitData(is_data, (data >> 4)); 	// send high 4 bits
@@ -331,8 +339,7 @@ void send4BitData(unsigned char is_data, unsigned char data)
 	// data is 4 bits (bits 4-7 are 0) only
 
 	if (data > 0x0F) {
-		trace_printf("ERROR: data should be only 4 bits");
-        data &= 0x0F; // default to expected parameter
+		trace_printf("error: data should be only 4 bits");
 	}
 
 	data |= (is_data << 6); // add instruction/data flag to 4 bits
@@ -362,6 +369,7 @@ void send4BitData(unsigned char is_data, unsigned char data)
 		enable = !enable;
 	}
 }
+
 
 /* This handler is declared in system/src/cmsis/vectors_stm32f0xx.c */
 void TIM2_IRQHandler()
