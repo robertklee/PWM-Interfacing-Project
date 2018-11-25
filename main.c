@@ -47,6 +47,8 @@
 #define myTIM3_PRESCALER ((uint16_t)48000) // bring down to 1 kHz
 #define myTIM3_PERIOD ((uint16_t)5) // wait 5 ms
 
+#define POTENTIOMETER_MAX		((uint16_t) 4770)
+
 const unsigned char intToString[10] = "0123456789";
 
 void myGPIOA_Init(void);
@@ -59,6 +61,7 @@ void mySPI1_Init(void);
 void myADC_Init(void);
 void myDAC_Init(void);
 void myLCD_Init(void);
+void LCDBootUpSequence(void);
 void sendDataLCD(unsigned char is_data, unsigned char data);
 void send4BitData(unsigned char is_data, unsigned char data);
 void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMessage);
@@ -79,32 +82,34 @@ main(int argc, char* argv[]){
     myGPIOA_Init();     /* Initialize I/O port PA */
     myTIM2_Init();      /* Initialize timer TIM2 */
     myEXTI_Init();      /* Initialize EXTI */
-    myDAC_Init();
+    myDAC_Init();		/* Initialize DAC */
 
-    myGPIOB_Init();
-    mySPI1_Init();
+    myGPIOB_Init();		/* Initialize I/O port PB */
+    mySPI1_Init();		/* Initialize SPI1 interface */
 
-    myTIM3_Init();
+    myTIM3_Init();		/* Initialize timer TIm3 */
 
-    myGPIOC_Init();
-    myADC_Init();
+    myGPIOC_Init();		/* Initialize I/O port PC */
+    myADC_Init();		/* Initialize ADC */
 
-    myLCD_Init();
+    myLCD_Init();		/* Initialize LCD using SPI to 4 bit interface and clear display*/
 
-    unsigned int milliFreq = 0;
-    unsigned int milliRes = 0;
-    unsigned int adc_result = 0;
+    //LCDBootUpSequence();
+
+    unsigned int milliFreq = 0; 	// used to calculate frequency
+    unsigned int milliRes = 0;		// used to calculate resistance
+    unsigned int adc_result = 0;	// stores result from ADC
 
     while (1)
     {
     	if ( (ADC1->ISR & 0x04) != 0 ) {
-    		// if end of conversion flag is set
-    		adc_result = (ADC1->DR);
-    		DAC->DHR12R1 = adc_result;
-    		DAC->SWTRIGR |= 0x01;
+    		// if ADC end of conversion flag is set
+    		adc_result = (ADC1->DR); // retrieve value from data register
+    		DAC->DHR12R1 = adc_result; // write value to DAC data register, 12 bit right aligned
+    		DAC->SWTRIGR |= 0x01; // software trigger to update DAC
     	}
 
-    	milliRes = ((adc_result*1000)/4095)*5000;
+    	milliRes = ((adc_result*1000)/4095.0)*POTENTIOMETER_MAX;
     	updateDisplayNumber(0, milliFreq);
 		updateDisplayNumber(1, milliRes);
 
@@ -115,7 +120,7 @@ main(int argc, char* argv[]){
 
 }
 
-
+// PA4 is DAC, PA1 is square wave input
 void myGPIOA_Init()
 {
     /* Enable clock for GPIOA peripheral */
@@ -307,6 +312,43 @@ void myEXTI_Init()
     /* Enable EXTI1 interrupts in NVIC */
     // Relevant register: NVIC->ISER[0], or use NVIC_EnableIRQ
     NVIC_EnableIRQ(EXTI0_1_IRQn);
+}
+
+void waitTIM3(unsigned int milliseconds) {
+	unsigned int limit = milliseconds / 5;
+	unsigned int counter = 0;
+	// start timer to wait <milliseconds> ms
+	TIM3->CR1 |= TIM_CR1_CEN;
+	/* Check if update interrupt flag is indeed set */
+	while (counter < limit) {
+		if ((TIM3->SR & TIM_SR_UIF) != 0) {
+			counter++;
+			/* Clear update interrupt flag */
+			// Relevant register: TIM2->SR
+			TIM3->SR &= ~(TIM_SR_UIF);
+			// start timer to wait 5 ms
+				TIM3->CR1 |= TIM_CR1_CEN;
+		}
+	}
+	/* Clear update interrupt flag */
+	// Relevant register: TIM2->SR
+	TIM3->SR &= ~(TIM_SR_UIF);
+}
+
+void LCDBootUpSequence()
+{
+	unsigned char waitMessage[] = "  wait          ";
+	for(int i = 8; i < 16; i++) {
+		waitTIM3(100);
+		waitMessage[i] = 0xFF;
+		updateDisplayTwoLine(&waitMessage[0]);
+	}
+
+	unsigned char topLine[] = "        Luke & Robert present...                  ";
+	for(int i = 0; i < 30; i++) {
+		waitTIM3(5);
+		updateDisplayOneLine(0, &topLine[i]);
+	}
 }
 
 void sendDataLCD(unsigned char is_data, unsigned char data)
