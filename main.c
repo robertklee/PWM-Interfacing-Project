@@ -64,7 +64,8 @@ void myLCD_Init(void);
 void LCDBootUpSequence(void);
 void sendDataLCD(unsigned char is_data, unsigned char data);
 void send4BitData(unsigned char is_data, unsigned char data);
-void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMessage);
+void updateDisplayOneLine(unsigned char isLowerLine,
+        unsigned char* singleLineMessage);
 void updateDisplayTwoLine(unsigned char* twoLineMessage);
 void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits);
 
@@ -72,27 +73,26 @@ volatile unsigned char previousEdgeFound = 0;  // 0/1: first/not first edge
 
 volatile unsigned int previousMilliFreq = 0;
 
-int
-main(int argc, char* argv[]){
-
+int main(int argc, char* argv[])
+{
 
     trace_printf("This is Final ECE 355 Project...\n");
     trace_printf("System clock: %u Hz\n", SystemCoreClock);
 
-    myGPIOA_Init();     /* Initialize I/O port PA */
-    myTIM2_Init();      /* Initialize timer TIM2 */
-    myEXTI_Init();      /* Initialize EXTI */
-    myDAC_Init();		/* Initialize DAC */
+    myGPIOA_Init(); /* Initialize I/O port PA */
+    myTIM2_Init(); /* Initialize timer TIM2 */
+    myEXTI_Init(); /* Initialize EXTI */
+    myDAC_Init(); /* Initialize DAC */
 
-    myGPIOB_Init();		/* Initialize I/O port PB */
-    mySPI1_Init();		/* Initialize SPI1 interface */
+    myGPIOB_Init(); /* Initialize I/O port PB */
+    mySPI1_Init(); /* Initialize SPI1 interface */
 
-    myTIM3_Init();		/* Initialize timer TIm3 */
+    myTIM3_Init(); /* Initialize timer TIm3 */
 
-    myGPIOC_Init();		/* Initialize I/O port PC */
-    myADC_Init();		/* Initialize ADC */
+    myGPIOC_Init(); /* Initialize I/O port PC */
+    myADC_Init(); /* Initialize ADC */
 
-    myLCD_Init();		/* Initialize LCD using SPI to 4 bit interface and clear display*/
+    myLCD_Init(); /* Initialize LCD using SPI to 4 bit interface and clear display*/
 
     //LCDBootUpSequence();
 
@@ -100,20 +100,19 @@ main(int argc, char* argv[]){
     unsigned int milliRes = 0;		// used to calculate resistance
     unsigned int adc_result = 0;	// stores result from ADC
 
-    while (1)
-    {
-    	if ( (ADC1->ISR & 0x04) != 0 ) {
-    		// if ADC end of conversion flag is set
-    		adc_result = (ADC1->DR); // retrieve value from data register
-    		DAC->DHR12R1 = adc_result; // write value to DAC data register, 12 bit right aligned
-    		DAC->SWTRIGR |= 0x01; // software trigger to update DAC
-    	}
+    while (1) {
+        if ((ADC1->ISR & 0x04) != 0) {
+            // if ADC end of conversion flag is set
+            adc_result = (ADC1->DR); // retrieve value from data register
+            DAC->DHR12R1 = adc_result; // write value to DAC data register, 12 bit right aligned
+            DAC->SWTRIGR |= 0x01; // software trigger to update DAC
+        }
 
-    	milliRes = ((adc_result*1000)/4095.0)*POTENTIOMETER_MAX;
-    	updateDisplayNumber(0, milliFreq);
-		updateDisplayNumber(1, milliRes);
+        milliRes = ((adc_result * 1000) / 4095.0) * POTENTIOMETER_MAX;
+        updateDisplayNumber(0, milliFreq);
+        updateDisplayNumber(1, milliRes);
 
-    	milliFreq = previousMilliFreq;
+        milliFreq = previousMilliFreq;
     }
 
     return 0;
@@ -154,45 +153,47 @@ void myGPIOB_Init()
     GPIOB->MODER = (GPIOB->MODER & ~(0x00000FC0)) | 0x00000980;
 
     /* Ensure no pull-up/pull-down for PB3,4,5 */
-    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPDR3 | GPIO_PUPDR_PUPDR4 | GPIO_PUPDR_PUPDR5);
+    GPIOB->PUPDR &=
+            ~(GPIO_PUPDR_PUPDR3 | GPIO_PUPDR_PUPDR4 | GPIO_PUPDR_PUPDR5);
 
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource3, GPIO_AF_0); // set PB3's AF to SPI1_SCK
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource5, GPIO_AF_0); // set PB5's AF to SPI1_MOSI
 
     // configure PB3,4,5 for high speed output
-    GPIOB->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR3 | GPIO_OSPEEDER_OSPEEDR4 | GPIO_OSPEEDER_OSPEEDR5;
+    GPIOB->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR3 | GPIO_OSPEEDER_OSPEEDR4
+            | GPIO_OSPEEDER_OSPEEDR5;
 }
 
 // initialize PC1 for ADC
 void myGPIOC_Init()
 {
-	RCC->AHBENR |= RCC_AHBENR_GPIOCEN; //enable clock for GPIOC peripheral
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN; //enable clock for GPIOC peripheral
 
-	// set GPIOC[1] to be analog mode
-	GPIOC->MODER |= 0x0000000C;
+    // set GPIOC[1] to be analog mode
+    GPIOC->MODER |= 0x0000000C;
 
-	// ensure no pull-up/pull-down for PC1
-	GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPDR1);
+    // ensure no pull-up/pull-down for PC1
+    GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPDR1);
 }
 
 void mySPI1_Init()
 {
-	SPI_InitTypeDef SPI_InitStructInfo;
-	SPI_InitTypeDef* SPI_InitStruct = &SPI_InitStructInfo;
-	RCC->APB2ENR |= RCC_APB2ENR_SPI1EN; //enable SPI clock
+    SPI_InitTypeDef SPI_InitStructInfo;
+    SPI_InitTypeDef* SPI_InitStruct = &SPI_InitStructInfo;
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN; //enable SPI clock
 
-	SPI_InitStruct->SPI_Direction = SPI_Direction_1Line_Tx;
-	SPI_InitStruct->SPI_Mode = SPI_Mode_Master;
-	SPI_InitStruct->SPI_DataSize = SPI_DataSize_8b;
-	SPI_InitStruct->SPI_CPOL = SPI_CPOL_Low;
-	SPI_InitStruct->SPI_CPHA = SPI_CPHA_1Edge;
-	SPI_InitStruct->SPI_NSS = SPI_NSS_Soft;
-	SPI_InitStruct->SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256;
-	SPI_InitStruct->SPI_FirstBit = SPI_FirstBit_MSB;
-	SPI_InitStruct->SPI_CRCPolynomial = 7;
-	SPI_Init(SPI1, SPI_InitStruct);
-	SPI_SSOutputCmd(SPI1, ENABLE); //TODO ... figure out what this actually does
-	SPI_Cmd(SPI1, ENABLE);
+    SPI_InitStruct->SPI_Direction = SPI_Direction_1Line_Tx;
+    SPI_InitStruct->SPI_Mode = SPI_Mode_Master;
+    SPI_InitStruct->SPI_DataSize = SPI_DataSize_8b;
+    SPI_InitStruct->SPI_CPOL = SPI_CPOL_Low;
+    SPI_InitStruct->SPI_CPHA = SPI_CPHA_1Edge;
+    SPI_InitStruct->SPI_NSS = SPI_NSS_Soft;
+    SPI_InitStruct->SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256;
+    SPI_InitStruct->SPI_FirstBit = SPI_FirstBit_MSB;
+    SPI_InitStruct->SPI_CRCPolynomial = 7;
+    SPI_Init(SPI1, SPI_InitStruct);
+    SPI_SSOutputCmd(SPI1, ENABLE); //TODO ... figure out what this actually does
+    SPI_Cmd(SPI1, ENABLE);
 }
 
 void myTIM2_Init()
@@ -204,9 +205,9 @@ void myTIM2_Init()
     /* Configure TIM2: buffer auto-reload, count up, stop on overflow,
      * enable update events, interrupt on overflow only */
     // Relevant register: TIM2->CR1
-    TIM2->CR1 = ((uint16_t)0x008C); /* 008C sets auto-reload preload enabled, stops the
-                                     *  counter on an update event, and counter ONLY
-                                     *  controlled by over.underflow */
+    TIM2->CR1 = ((uint16_t) 0x008C); /* 008C sets auto-reload preload enabled, stops the
+                                      *  counter on an update event, and counter ONLY
+                                      *  controlled by over/underflow */
 
     /* Set clock prescaler value */
     TIM2->PSC = myTIM2_PRESCALER;
@@ -215,7 +216,7 @@ void myTIM2_Init()
 
     /* Update timer registers */
     // Relevant register: TIM2->EGR
-    TIM2->EGR =((uint16_t)0x0001);
+    TIM2->EGR = ((uint16_t) 0x0001);
 
     /* Assign TIM2 interrupt priority = 0 in NVIC */
     // Relevant register: NVIC->IP[3], or use NVIC_SetPriority
@@ -238,7 +239,7 @@ void myTIM3_Init()
 
     // Relevant register: TIM2->CR1
     // Configure TIM3: one-pulse mode, count down, buffer auto-reload, enable update events
-    TIM3->CR1 = ((uint16_t)0x008C);
+    TIM3->CR1 = ((uint16_t) 0x008C);
 
     /* Set clock prescaler value */
     TIM3->PSC = myTIM3_PRESCALER;
@@ -247,23 +248,23 @@ void myTIM3_Init()
 
     /* Update timer registers */
     // Relevant register: TIM2->EGR
-    TIM3->EGR =((uint16_t)0x0001);
+    TIM3->EGR = ((uint16_t) 0x0001);
 }
 
 // need to include stm32f0xx_adc.c from system->src->stm32f0-stdperiph
 // uses PC1 as ADC input
 void myADC_Init()
 {
-	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; //enable ADC1 clock
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; //enable ADC1 clock
 
-	//configure ADC1 for: continuous mode, overrun mode, right-data-align, 12 bit resolution
-	ADC1->CFGR1 = 0x00003000; // page 233 of manual
+    //configure ADC1 for: continuous mode, overrun mode, right-data-align, 12 bit resolution
+    ADC1->CFGR1 = 0x00003000; // page 233 of manual
 
-	ADC1->CHSELR |= 0x00000800; // page 211 - configure ADC to channel 11
+    ADC1->CHSELR |= 0x00000800; // page 211 - configure ADC to channel 11
 
-	ADC1->SMPR |= 0x00000003; // page 237 - configure for 239.5 cycles
+    ADC1->SMPR |= 0x00000003; // page 237 - configure for 239.5 cycles
 
-	ADC1->CR |= 0x00000005; // enable ADC and start conversion
+    ADC1->CR |= 0x00000005; // enable ADC and start conversion
 
 }
 
@@ -271,23 +272,23 @@ void myADC_Init()
 // uses PA4 as output pin
 void myDAC_Init()
 {
-	RCC->APB1ENR |= RCC_APB1ENR_DACEN; // enable DAC clock
-	// enable DAC
-	DAC->CR |= 0x0000003E;
-	DAC->CR |= 0x00000001;
+    RCC->APB1ENR |= RCC_APB1ENR_DACEN; // enable DAC clock
+    // enable DAC
+    DAC->CR |= 0x0000003E;
+    DAC->CR |= 0x00000001;
 
-	// write to DAC->DACC1DHR[11:0] for right-aligned 12 bit data.
+    // write to DAC->DACC1DHR[11:0] for right-aligned 12 bit data.
 }
 
 void myLCD_Init()
 {
-	// NOTE for the first one, don't send lower half as LCD defaults lower half to 0000
-	send4BitData(0, (0x20 >> 4)); // configure to 4 bit interface
-	sendDataLCD(0, 0x28); // function set: DDRAM access performed using 4-bit interface, 2 lines of 8 characters
-	sendDataLCD(0, 0x0C); // display is on, cursor is not displayed and not blinking
-	sendDataLCD(0, 0x06); // auto-increment DDRAM address after each access
+    // NOTE for the first one, don't send lower half as LCD defaults lower half to 0000
+    send4BitData(0, (0x20 >> 4)); // configure to 4 bit interface
+    sendDataLCD(0, 0x28); // function set: DDRAM access performed using 4-bit interface, 2 lines of 8 characters
+    sendDataLCD(0, 0x0C); // display is on, cursor is not displayed and not blinking
+    sendDataLCD(0, 0x06); // auto-increment DDRAM address after each access
 //	sendDataLCD(0, 0x0F); // sets cursor to be visible
-	sendDataLCD(0, 0x01); // display clear
+    sendDataLCD(0, 0x01); // display clear
 }
 
 void myEXTI_Init()
@@ -308,97 +309,99 @@ void myEXTI_Init()
     // Relevant register: NVIC->IP[1], or use NVIC_SetPriority
     NVIC_SetPriority(EXTI0_1_IRQn, 0);
 
-
     /* Enable EXTI1 interrupts in NVIC */
     // Relevant register: NVIC->ISER[0], or use NVIC_EnableIRQ
     NVIC_EnableIRQ(EXTI0_1_IRQn);
 }
 
-void waitTIM3(unsigned int milliseconds) {
-	unsigned int limit = milliseconds / 5;
-	unsigned int counter = 0;
-	// start timer to wait <milliseconds> ms
-	TIM3->CR1 |= TIM_CR1_CEN;
-	/* Check if update interrupt flag is indeed set */
-	while (counter < limit) {
-		if ((TIM3->SR & TIM_SR_UIF) != 0) {
-			counter++;
-			/* Clear update interrupt flag */
-			// Relevant register: TIM2->SR
-			TIM3->SR &= ~(TIM_SR_UIF);
-			// start timer to wait 5 ms
-				TIM3->CR1 |= TIM_CR1_CEN;
-		}
-	}
-	/* Clear update interrupt flag */
-	// Relevant register: TIM2->SR
-	TIM3->SR &= ~(TIM_SR_UIF);
+void waitTIM3(unsigned int milliseconds)
+{
+    unsigned int limit = milliseconds / 5;
+    unsigned int counter = 0;
+    // start timer to wait <milliseconds> ms
+    TIM3->CR1 |= TIM_CR1_CEN;
+    /* Check if update interrupt flag is indeed set */
+    while (counter < limit) {
+        if ((TIM3->SR & TIM_SR_UIF) != 0) {
+            counter++;
+            /* Clear update interrupt flag */
+            // Relevant register: TIM2->SR
+            TIM3->SR &= ~(TIM_SR_UIF);
+            // start timer to wait 5 ms
+            TIM3->CR1 |= TIM_CR1_CEN;
+        }
+    }
+    /* Clear update interrupt flag */
+    // Relevant register: TIM2->SR
+    TIM3->SR &= ~(TIM_SR_UIF);
 }
 
 void LCDBootUpSequence()
 {
-	unsigned char waitMessage[] = "  wait          ";
-	for(int i = 8; i < 16; i++) {
-		waitTIM3(100);
-		waitMessage[i] = 0xFF;
-		updateDisplayTwoLine(&waitMessage[0]);
-	}
+    unsigned char waitMessage[] = "  wait          ";
+    for (int i = 8; i < 16; i++) {
+        waitTIM3(100);
+        waitMessage[i] = 0xFF;
+        updateDisplayTwoLine(&waitMessage[0]);
+    }
 
-	unsigned char topLine[] = "        Luke & Robert present...                  ";
-	for(int i = 0; i < 30; i++) {
-		waitTIM3(5);
-		updateDisplayOneLine(0, &topLine[i]);
-	}
+    unsigned char topLine[] = "        Luke & Robert present...                  ";
+    for (int i = 0; i < 30; i++) {
+        waitTIM3(5);
+        updateDisplayOneLine(0, &topLine[i]);
+    }
 }
 
 void sendDataLCD(unsigned char is_data, unsigned char data)
 {
-	if (is_data > 1) {
-		trace_printf("ERROR: is_data flag should be a bool");
+    if (is_data > 1) {
+        trace_printf("ERROR: is_data flag should be a bool");
         is_data = (is_data > 1); //convert to a boolean
-	}
+    }
 
-	send4BitData(is_data, (data >> 4)); 	// send high 4 bits
-	send4BitData(is_data, (data & 0x0F)); 	// send low 4 bits
+    send4BitData(is_data, (data >> 4)); 	// send high 4 bits
+    send4BitData(is_data, (data & 0x0F)); 	// send low 4 bits
 
 }
 
 void send4BitData(unsigned char is_data, unsigned char data)
 {
-	// PRECONDITIONS: is_data is either 1 or 0
-	// data is 4 bits (bits 4-7 are 0) only
+    // PRECONDITIONS: is_data is either 1 or 0
+    // data is 4 bits (bits 4-7 are 0) only
 
-	if (data > 0x0F) {
-		trace_printf("ERROR: data should be only 4 bits");
+    if (data > 0x0F) {
+        trace_printf("ERROR: data should be only 4 bits");
         data &= 0x0F; // default to expected parameter
-	}
+    }
 
-	data |= (is_data << 6); // add instruction/data flag to 4 bits
+    data |= (is_data << 6); // add instruction/data flag to 4 bits
 
-	unsigned char enable = 0x0;
+    unsigned char enable = 0x0;
 
-	for (int i = 0; i < 3; i++) {
-		GPIOB->BRR |= 0x0010; // force LCK signal to 0
+    for (int i = 0; i < 3; i++) {
+        GPIOB->BRR |= 0x0010; // force LCK signal to 0
 
-		while( ((SPI1->SR & 0x0080) != 0) && (SPI1->SR & 0x0002) == 0) {}; // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
+        while (((SPI1->SR & 0x0080) != 0) && (SPI1->SR & 0x0002) == 0) {}; // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
 
-		unsigned char to_send = (data | (enable << 7));
-		SPI_SendData8(SPI1, to_send );
+        unsigned char to_send = (data | (enable << 7));
+        SPI_SendData8(SPI1, to_send);
 
-		while((SPI1->SR & 0x0080) != 0) {}; // while SPI1 is not busy (BSY = 0)
+        while ((SPI1->SR & 0x0080) != 0) {
+        }; // while SPI1 is not busy (BSY = 0)
 
-		GPIOB->BSRR |= 0x00000010; // force LCK signal to be 1
+        GPIOB->BSRR |= 0x00000010; // force LCK signal to be 1
 
-		// start timer to wait 5 ms
-		TIM3->CR1 |= TIM_CR1_CEN;
-		/* Check if update interrupt flag is indeed set */
-		while ((TIM3->SR & TIM_SR_UIF) == 0) {};
-		/* Clear update interrupt flag */
-		// Relevant register: TIM2->SR
-		TIM3->SR &= ~(TIM_SR_UIF);
+        // start timer to wait 5 ms
+        TIM3->CR1 |= TIM_CR1_CEN;
+        /* Check if update interrupt flag is indeed set */
+        while ((TIM3->SR & TIM_SR_UIF) == 0) {
+        };
+        /* Clear update interrupt flag */
+        // Relevant register: TIM2->SR
+        TIM3->SR &= ~(TIM_SR_UIF);
 
-		enable = !enable;
-	}
+        enable = !enable;
+    }
 }
 
 void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMessage)
@@ -412,7 +415,7 @@ void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMe
 
     sendDataLCD(0, address);
 
-    for (unsigned int i = 0; i < sizeof(char)*8; i++) {
+    for (unsigned int i = 0; i < sizeof(char) * 8; i++) {
         sendDataLCD(1, singleLineMessage[i]);
     }
 }
@@ -455,14 +458,16 @@ void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits) {
         lineTemplate[5] = 'm';
         numberOfDigits = 3;
     } else {
-    	numberToDisplay = milliUnits / 1e3;
+        numberToDisplay = milliUnits / 1e3;
     }
 
     for (int i = 0; i < numberOfDigits; i++) {
-        lineTemplate[2+i] = intToString[(int)(numberToDisplay / divisor)];
+        lineTemplate[2 + i] = intToString[(int) (numberToDisplay / divisor)];
         numberToDisplay %= divisor;
         divisor /= 10;
-        if (divisor == 0) { break; }
+        if (divisor == 0) {
+            break;
+        }
     }
 
     updateDisplayOneLine(isResistance, &lineTemplate[0]);
@@ -472,8 +477,7 @@ void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits) {
 void TIM2_IRQHandler()
 {
     /* Check if update interrupt flag is indeed set */
-    if ((TIM2->SR & TIM_SR_UIF) != 0)
-    {
+    if ((TIM2->SR & TIM_SR_UIF) != 0) {
         trace_printf("\n*** Overflow! ***\n");
 
         /* Clear update interrupt flag */
@@ -488,15 +492,12 @@ void TIM2_IRQHandler()
 
 
 /* This handler is declared in system/src/cmsis/vectors_stm32f0xx.c */
-void EXTI0_1_IRQHandler()
-{
-    // Your local variables...
+void EXTI0_1_IRQHandler() {
 //    volatile unsigned int frequency = 0; // TODO remove
 //    volatile unsigned int period = 0;
     volatile unsigned int counterValue = 0;
     /* Check if EXTI1 interrupt pending flag is indeed set */
-    if ((EXTI->PR & EXTI_PR_PR1) != 0)
-    {
+    if ((EXTI->PR & EXTI_PR_PR1) != 0) {
         //
         // 1. If this is the first edge:
         //  - Clear count register (TIM2->CNT).
@@ -520,12 +521,12 @@ void EXTI0_1_IRQHandler()
             previousEdgeFound = 1;
         }
 
-        else
-        {
+        else {
             TIM2->CR1 &= ~(TIM_CR1_CEN);
             EXTI->IMR &= ~((uint32_t) 0x00000002);
             counterValue = TIM2->CNT;
-            previousMilliFreq = (unsigned int)((48000000000.0)/(counterValue)); // extra factor of 1000 for mHz
+            previousMilliFreq =
+                    (unsigned int) ((48000000000.0) / (counterValue)); // extra factor of 1000 for mHz
             TIM2->CNT = ((uint32_t) 0x0);
             previousEdgeFound = 0;
             EXTI->IMR |= ((uint32_t) 0x00000002);
