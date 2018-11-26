@@ -431,6 +431,12 @@ void send4BitData(unsigned char is_data, unsigned char data4Bit)
     }
 }
 
+/**
+ * Updates the display with the given char[] message (length 8 minimum). Can be either sent to the upper or lower line
+ *
+ * @param isLowerLine       true if message is for lower line, false if upper line
+ * @param singleLineMessage     pointer to beginning of char array containing message
+ */
 void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMessage)
 {
     if (isLowerLine > 1) {
@@ -438,30 +444,41 @@ void updateDisplayOneLine(unsigned char isLowerLine, unsigned char* singleLineMe
         isLowerLine = (isLowerLine > 1); //convert to a bool
     }
 
-    unsigned char address = (0x80 | isLowerLine << 6);
+    unsigned char address = (0x80 | isLowerLine << 6); // update LCD address pointer
 
-    sendDataLCD(0, address);
+    sendDataLCD(0, address); // send desired address to LCD
 
     for (unsigned int i = 0; i < sizeof(char) * 8; i++) {
-        sendDataLCD(1, singleLineMessage[i]);
+        sendDataLCD(1, singleLineMessage[i]); // send message to LCD
     }
 }
 
+/**
+ * Updates the display with the given char[] message (length 16 minimum).
+ * Automatically splits the message to upper and lower lines.
+ *
+ * @param twoLineMessage        pointer to beginning of char array containing message
+ */
 void updateDisplayTwoLine(unsigned char* twoLineMessage)
 {
-    updateDisplayOneLine(0, &twoLineMessage[0]);
-    updateDisplayOneLine(1, &twoLineMessage[8]);
+    updateDisplayOneLine(0, &twoLineMessage[0]); // send message for upper line
+    updateDisplayOneLine(1, &twoLineMessage[8]); // send message for lower line
 }
 
 /**
+ * Automatically updates display with either resistance or frequency value
  *          Interval                |    Format
  * 10 kHz <= frequency < 1 MHz      |   "F:xxxkHz"
  * 100 Hz <= frequency < 10 kHz     |   "F:xxxxHz"
  * 1 Hz <= frequency < 100 Hz       |   "F:xxxmHz"
+ *
+ * @param isResistance          true if number is a resistance value, false if frequency value
+ * @param milliUnits            the number to be displayed, but in milli-<units of the number>
 */
 void updateDisplayNumber(unsigned char isResistance, unsigned int milliUnits) {
-    unsigned char lineTemplate[] = "F:xxxxHz";
+    unsigned char lineTemplate[] = "F:xxxxHz"; // default is for frequency
     if (isResistance) {
+        // update template if resistance
         lineTemplate[0] = 'R';
         lineTemplate[6] = ' ';
         lineTemplate[7] = 0xF4;
