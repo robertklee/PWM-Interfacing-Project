@@ -63,7 +63,7 @@ void myDAC_Init(void);
 void myLCD_Init(void);
 void LCDBootUpSequence(void);
 void sendDataLCD(unsigned char is_data, unsigned char data);
-void send4BitData(unsigned char is_data, unsigned char data);
+void send4BitData(unsigned char is_data, unsigned char data4Bit);
 void updateDisplayOneLine(unsigned char isLowerLine,
         unsigned char* singleLineMessage);
 void updateDisplayTwoLine(unsigned char* twoLineMessage);
@@ -316,6 +316,11 @@ void myEXTI_Init()
     NVIC_EnableIRQ(EXTI0_1_IRQn);
 }
 
+/**
+ * Stalls code for given number of milliseconds.
+ *
+ * @param milliseconds       number of milliseconds
+ */
 void waitTIM3(unsigned int milliseconds)
 {
     unsigned int limit = milliseconds / 5;
@@ -338,6 +343,9 @@ void waitTIM3(unsigned int milliseconds)
     TIM3->SR &= ~(TIM_SR_UIF);
 }
 
+/**
+ * Essential for LCD startup /s
+ */
 void LCDBootUpSequence()
 {
     unsigned char waitMessage[] = "  wait          ";
@@ -354,6 +362,12 @@ void LCDBootUpSequence()
     }
 }
 
+/**
+ * Sends the given byte to the LCD, and flags it as either an instruction or data
+ *
+ * @param is_data       true if data, false if instruction
+ * @param data          data to send
+ */
 void sendDataLCD(unsigned char is_data, unsigned char data)
 {
     if (is_data > 1) {
@@ -366,43 +380,54 @@ void sendDataLCD(unsigned char is_data, unsigned char data)
 
 }
 
-void send4BitData(unsigned char is_data, unsigned char data)
+/**
+ * Sends a 4 bit chunk of data to LCD using 4 bit SPI interface. The user should use sendDataLCD rather than
+ * calling this method directly.
+ *
+ * @param is_data       true if data, false if instruction
+ * @param data4Bit      data4Bit to send
+ */
+void send4BitData(unsigned char is_data, unsigned char data4Bit)
 {
     // PRECONDITIONS: is_data is either 1 or 0
     // data is 4 bits (bits 4-7 are 0) only
 
-    if (data > 0x0F) {
-        trace_printf("ERROR: data should be only 4 bits");
-        data &= 0x0F; // default to expected parameter
+    if (data4Bit > 0x0F) {
+        // check if data4bit is actually 4 bits
+        trace_printf("ERROR: data4Bit should be only 4 bits");
+        data4Bit &= 0x0F; // default to expected parameter
     }
 
-    data |= (is_data << 6); // add instruction/data flag to 4 bits
+    data4Bit |= (is_data << 6); // add instruction/data flag to 4 bits
 
-    unsigned char enable = 0x0;
+    unsigned char enable = 0x0; // to change the enable bit in the shift register
 
     for (int i = 0; i < 3; i++) {
+        // iterate through 3 times sending the same 4 bits of data,
+        // but changing the enable bit to 1-0-1 sequence
+
         GPIOB->BRR |= 0x0010; // force LCK signal to 0
 
         while (((SPI1->SR & 0x0080) != 0) && (SPI1->SR & 0x0002) == 0) {}; // Page 759 of reference manual, bit 1 is TXE, bit 7 is BSY
 
-        unsigned char to_send = (data | (enable << 7));
-        SPI_SendData8(SPI1, to_send);
+        unsigned char to_send = (data4Bit | (enable << 7)); // add enable bit to the data to send through SPI
+        SPI_SendData8(SPI1, to_send); // send the data
 
-        while ((SPI1->SR & 0x0080) != 0) {
-        }; // while SPI1 is not busy (BSY = 0)
+        while ((SPI1->SR & 0x0080) != 0) {}; // while SPI1 is not busy (BSY = 0)
 
         GPIOB->BSRR |= 0x00000010; // force LCK signal to be 1
 
         // start timer to wait 5 ms
         TIM3->CR1 |= TIM_CR1_CEN;
+
         /* Check if update interrupt flag is indeed set */
-        while ((TIM3->SR & TIM_SR_UIF) == 0) {
-        };
+        while ((TIM3->SR & TIM_SR_UIF) == 0) {};
+
         /* Clear update interrupt flag */
         // Relevant register: TIM2->SR
         TIM3->SR &= ~(TIM_SR_UIF);
 
-        enable = !enable;
+        enable = !enable; // flip enable bit
     }
 }
 
