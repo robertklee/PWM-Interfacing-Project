@@ -11,3 +11,6 @@
 
 - Frequency range: 812-1250 Hz
 - Resistance range: 0-4770 Ohms
+
+## TODO
+- switch potentiometer input to 3.3V
