@@ -47,7 +47,7 @@
 #define myTIM3_PRESCALER ((uint16_t)48000) // bring down to 1 kHz
 #define myTIM3_PERIOD ((uint16_t)5) // wait 5 ms
 
-#define POTENTIOMETER_MAX		((uint16_t) 4770)
+#define POTENTIOMETER_MAX		((uint16_t) 4800)
 
 const unsigned char intToString[10] = "0123456789";
 
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
 
     myLCD_Init();                   /* Initialize LCD using SPI to 4 bit interface and clear display*/
 
-//    LCDBootUpSequence();
+    LCDBootUpSequence(); // lol
 
     unsigned int milliFreq = 0; 	// used to calculate frequency
     unsigned int milliRes = 0;		// used to calculate resistance
@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
             DAC->SWTRIGR |= 0x01; // software trigger to update DAC
         }
 
-        milliRes = ((adc_result * 1000) / 4095.0) * POTENTIOMETER_MAX; // calculate resistance
+        milliRes = ((adc_result * 1000.0) / 4095.0) * POTENTIOMETER_MAX; // calculate resistance
         updateDisplayNumber(0, milliFreq); // write frequency to top line
         updateDisplayNumber(1, milliRes);  // write resistance to bottom line
 
@@ -191,7 +191,7 @@ void mySPI1_Init()
     SPI_InitStruct->SPI_FirstBit = SPI_FirstBit_MSB;
     SPI_InitStruct->SPI_CRCPolynomial = 7;
     SPI_Init(SPI1, SPI_InitStruct);
-    SPI_SSOutputCmd(SPI1, ENABLE); //TODO ... figure out what this actually does
+    //SPI_SSOutputCmd(SPI1, ENABLE); //TODO ... figure out what this actually does
     SPI_Cmd(SPI1, ENABLE);
 }
 
@@ -418,14 +418,7 @@ void send4BitData(unsigned char is_data, unsigned char data4Bit)
         GPIOB->BSRR |= 0x00000010; // force LCK signal to be 1
 
         // start timer to wait 5 ms
-        TIM3->CR1 |= TIM_CR1_CEN;
-
-        /* Check if update interrupt flag is indeed set */
-        while ((TIM3->SR & TIM_SR_UIF) == 0) {};
-
-        /* Clear update interrupt flag */
-        // Relevant register: TIM2->SR
-        TIM3->SR &= ~(TIM_SR_UIF);
+        waitTIM3(5);
 
         enable = !enable; // flip enable bit
     }
