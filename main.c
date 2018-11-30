@@ -6,7 +6,10 @@
 // ----------------------------------------------------------------------------
 // School: University of Victoria, Canada.
 // Course: ECE 355 "Microprocessor-Based Systems".
-// This is template code for Part 2 of Introductory Lab.
+//
+// Designed and written by Robert Lee and Luke Evans
+// September-November, 2018
+// University of Victoria
 //
 // See "system/include/cmsis/stm32f0xx.h" for register/bit definitions.
 // See "system/src/cmsis/vectors_stm32f0xx.c" for handler declarations.
