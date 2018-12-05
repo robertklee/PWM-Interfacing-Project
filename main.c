@@ -407,7 +407,7 @@ void send4BitData(unsigned char is_data, unsigned char data4Bit)
 
     for (int i = 0; i < 3; i++) {
         // iterate through 3 times sending the same 4 bits of data,
-        // but changing the enable bit to 1-0-1 sequence
+        // but changing the enable bit to 0-1-0 sequence
 
         GPIOB->BRR |= 0x0010; // force LCK signal to 0
 
